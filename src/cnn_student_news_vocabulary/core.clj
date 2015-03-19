@@ -77,9 +77,24 @@
        (remove less-than-two-chars?)
        (remove begin-with-capital-letter?)))
 
+(let [cache-dir (java.io.File. "cache")]
+  (when-not (.exists cache-dir)
+    (.mkdir cache-dir))
+ (defn get-cached-content [orig-url]
+   (let [url (-> orig-url
+                 (clojure.string/replace #":" "_")
+                 (clojure.string/replace #"/" "_"))
+         cache-file (str cache-dir "/" url)
+         file (java.io.File. cache-file)]
+     (if (.exists file)
+       (slurp file)
+       (let [content (-> (client/get orig-url)
+                         (get :body))]
+         (spit file content)
+         content)))))
+
 (defn extract-word-entries [url]
-  (let [body (-> (client/get url)
-                 (get :body))
+  (let [body (get-cached-content url)
         title (second (re-find #"<title>(.*?)</title>" body))]
     (binding [*out* *err*]
       (println (str "Fetching " url "...")))
